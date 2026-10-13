@@ -1,0 +1,63 @@
+name: RegarSport CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    name: Backend Test Suite (Java 21 & Spring Boot)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Run Multi-Module Tests with Maven
+        working-directory: backend
+        run: mvn clean test --batch-mode
+
+  frontend-build:
+    name: Frontend Build & Type Check (React & TS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Frontend Dependencies
+        working-directory: FE/regarsport-frontend
+        run: npm ci
+
+      - name: Lint Frontend
+        working-directory: FE/regarsport-frontend
+        run: npm run lint
+
+      - name: Build Frontend
+        working-directory: FE/regarsport-frontend
+        run: npm run build
+
+  compose-config:
+    name: Docker Compose Config Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml with .env.example
+        run: docker compose --env-file .env.example config --quiet

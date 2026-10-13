@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none">
+  <defs>
+    <style>
+      .topo-line {
+        fill: none;
+        stroke: #415A46;
+        stroke-width: 1.1;
+        stroke-opacity: 0.28;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .topo-bold {
+        fill: none;
+        stroke: #4E6B54;
+        stroke-width: 1.6;
+        stroke-opacity: 0.4;
+      }
+    </style>
+  </defs>
+
+  <!-- Contour Layer 1 (Outer ridges) -->
+  <path class="topo-line" d="M0,45 Q120,65 240,30 T480,75 Q540,90 600,60" />
+  <path class="topo-line" d="M0,85 Q110,110 230,70 T470,120 Q530,135 600,105" />
+  <path class="topo-bold" d="M0,125 Q130,160 250,115 T490,165 Q550,180 600,150" />
+  <path class="topo-line" d="M0,165 Q140,200 270,160 T510,210 Q560,225 600,200" />
+  
+  <!-- Contour Layer 2 (Organic Hill Loop A) -->
+  <path class="topo-line" d="M120,240 C140,200 200,190 250,220 C300,250 310,310 270,350 C230,390 150,380 120,330 C90,280 100,260 120,240 Z" />
+  <path class="topo-line" d="M140,255 C155,225 200,215 235,240 C270,265 275,310 245,340 C215,370 155,360 135,320 C115,280 125,270 140,255 Z" />
+  <path class="topo-bold" d="M160,270 C170,250 200,245 220,260 C240,275 245,305 225,325 C205,345 165,340 150,310 C135,280 150,280 160,270 Z" />
+  <path class="topo-line" d="M175,285 C182,272 200,270 210,280 C220,290 220,305 210,315 C200,325 180,320 172,305 C165,290 170,290 175,285 Z" />
+  <circle cx="192" cy="298" r="4" class="topo-bold" />
+
+  <!-- Contour Layer 3 (Flowing Traverse Ridge) -->
+  <path class="topo-line" d="M0,230 Q60,280 110,360 Q130,420 100,480 Q70,540 0,570" />
+  <path class="topo-bold" d="M0,270 Q40,320 85,390 Q105,440 80,495 Q55,550 0,590" />
+  <path class="topo-line" d="M0,310 Q25,355 60,420 Q75,465 55,515 Q40,555 0,600" />
+
+  <!-- Contour Layer 4 (Mountain Peak B East) -->
+  <path class="topo-line" d="M380,180 C440,160 510,190 530,250 C550,310 520,380 460,400 C400,420 340,380 320,320 C300,260 330,195 380,180 Z" />
+  <path class="topo-line" d="M400,205 C445,190 495,210 510,255 C525,300 500,355 455,370 C410,385 365,355 350,310 C335,265 360,215 400,205 Z" />
+  <path class="topo-bold" d="M420,230 C450,220 480,235 490,265 C500,295 480,335 450,345 C420,355 390,335 380,305 C370,275 390,240 420,230 Z" />
+  <path class="topo-line" d="M435,250 C455,242 472,252 478,272 C484,292 470,315 450,322 C430,329 410,315 404,295 C398,275 415,255 435,250 Z" />
+  <circle cx="441" cy="286" r="3.5" class="topo-bold" />
+
+  <!-- Contour Layer 5 (Bottom South Basin) -->
+  <path class="topo-line" d="M160,600 C200,530 280,500 360,520 C440,540 500,480 540,430 C565,400 580,380 600,370" />
+  <path class="topo-bold" d="M190,600 C230,550 295,525 365,542 C435,560 485,510 520,465 C550,430 570,415 600,405" />
+  <path class="topo-line" d="M230,600 C265,570 315,550 375,565 C435,580 475,540 505,500 C535,465 560,450 600,440" />
+  <path class="topo-line" d="M280,600 C310,585 345,575 390,588 C435,600 460,570 485,535 C510,505 540,490 600,480" />
+
+  <!-- Contour Layer 6 (Meandering valleys) -->
+  <path class="topo-line" d="M280,0 Q320,80 370,120 T440,170" />
+  <path class="topo-line" d="M250,0 Q290,70 340,105 T410,150" />
+  <path class="topo-bold" d="M220,0 Q260,60 310,90 T380,130" />
+  <path class="topo-line" d="M190,0 Q230,50 280,75 T350,110" />
+
+  <path class="topo-line" d="M520,600 C540,570 570,550 600,545" />
+  <path class="topo-line" d="M550,600 C565,585 585,575 600,572" />
+</svg>

@@ -1,0 +1,242 @@
+# RegarStore - satu perintah untuk semua: docker compose up -d --build
+# Database: Postgres lokal (COMPOSE_PROFILES=local-db) atau Supabase (isi DB_* di .env).
+
+x-backend: &backend
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+      required: false   # hanya ada saat profile local-db aktif
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+  environment: &backend-env
+    DB_HOST: ${DB_HOST:?isi DB_HOST di .env}
+    DB_PORT: ${DB_PORT:-6543}
+    DB_NAME: ${DB_NAME:-postgres}
+    DB_USER: ${DB_USER:?isi DB_USER di .env}
+    DB_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+    REDIS_HOST: redis
+    RABBITMQ_HOST: rabbitmq
+    RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+    RABBITMQ_PASS: ${RABBITMQ_PASSWORD:-guest}
+    MAIL_HOST: ${MAIL_HOST:-mailpit}
+    MAIL_PORT: ${MAIL_PORT:-1025}
+    MAIL_USER: ${MAIL_USER:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+    MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+    MAIL_FROM: ${MAIL_FROM:-noreply@regarstore.com}
+    JWT_SECRET: ${JWT_SECRET:?isi JWT_SECRET di .env}
+    STORAGE_PROVIDER: ${STORAGE_PROVIDER:-cloudinary}
+    CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+    CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+    CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    UPLOAD_BASE_URL: ${UPLOAD_BASE_URL:-/uploads}   # relatif: jalan di domain mana pun lewat proxy nginx
+    MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+    MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+    MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID:-}
+    MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+    FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    ADMIN_NAME: ${ADMIN_NAME:-Admin RegarStore}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+
+services:
+  # --- Infrastruktur ---
+  # Postgres lokal untuk penguji tanpa akun Supabase: aktif lewat COMPOSE_PROFILES=local-db di .env
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["local-db"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    ports:
+      - "5672:5672"     # AMQP protocol
+      - "15672:15672"   # Management Dashboard Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"     # SMTP server for Spring Boot JavaMailSender
+      - "8025:8025"     # Web UI to preview outgoing transactional emails
+    volumes:
+      - mailpit_data:/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3000"     # 3000 dipakai dashboard Dokploy
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
+  # Tunnel publik (opsional): COMPOSE_PROFILES=tunnel + NGROK_* di .env. Link dicetak di log container ngrok.
+  # Satu agent untuk dua tunnel karena akun ngrok gratis hanya boleh 1 sesi agent.
+  ngrok:
+    image: ngrok/ngrok:alpine
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    configs:
+      - source: ngrok
+        target: /etc/ngrok.yml
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ngrok start --all --config /etc/ngrok.yml --log stdout --log-level warn &
+        pid=$$!
+        url() { wget -qO- "http://127.0.0.1:4040/api/tunnels/$$1" 2>/dev/null | grep -o '"public_url":"[^"]*"' | cut -d'"' -f4; }
+        until [ -n "$$(url web)" ] && [ -n "$$(url mail)" ]; do kill -0 $$pid 2>/dev/null || exit 1; sleep 2; done
+        echo "================================================================"
+        echo " Frontend : $$(url web)"
+        echo " Mailpit  : $$(url mail)   (login: NGROK_MAIL_AUTH di .env)"
+        echo "================================================================"
+        wait $$pid
+
+  # --- Backend Microservices ---
+  auth-service:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: auth-service
+
+  catalog-service:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: catalog-service
+    volumes:
+      - uploads:/app/uploads
+
+  order-service:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: order-service
+    environment:
+      <<: *backend-env
+      CATALOG_SERVICE_HOST: catalog-service   # harga checkout diambil dari catalog-service
+
+  payment-service:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: payment-service
+
+  notification-service:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: notification-service
+
+  api-gateway:
+    <<: *backend
+    build:
+      context: ./backend
+      args:
+        SERVICE: api-gateway
+    environment:
+      <<: *backend-env
+      AUTH_SERVICE_HOST: auth-service
+      CATALOG_SERVICE_HOST: catalog-service
+      ORDER_SERVICE_HOST: order-service
+      PAYMENT_SERVICE_HOST: payment-service
+      SPRING_DATA_REDIS_HOST: redis
+    ports:
+      - "8080:8080"
+
+  # --- Frontend (nginx, proxy /api ke api-gateway) ---
+  frontend:
+    build:
+      context: ./FE/regarsport-frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  mailpit_data:
+  prometheus_data:
+  grafana_data:
+  uploads:
+
+configs:
+  ngrok:
+    content: |
+      version: 3
+      tunnels:
+        web:
+          proto: http
+          addr: frontend:80
+          domain: ${NGROK_DOMAIN:-}
+        mail:
+          proto: http
+          addr: mailpit:8025
+          basic_auth: ["${NGROK_MAIL_AUTH:-}"]   # inbox berisi OTP: jangan dibuka tanpa login

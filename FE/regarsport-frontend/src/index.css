@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  --font-heading: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-tactical-950: #0D130F;
+  --color-tactical-900: #162018;
+  --color-tactical-850: #1B261E;
+  --color-tactical-800: #233027;
+  --color-tactical-700: #2E3E33;
+  --color-tactical-600: #415547;
+  
+  --color-sand-50: #FAF8F4;
+  --color-sand-100: #F3EFE7;
+  --color-sand-200: #E7E0D3;
+  --color-sand-300: #D4C9B6;
+  
+  --color-brand-red: #B9382B;
+  --color-brand-crimson: #982D22;
+  --color-terracotta: #C85A48;
+  --color-terracotta-soft: #F5EAE6;
+}
+
+/* Custom Typography Helper Classes */
+.font-condensed {
+  font-family: var(--font-heading);
+}
+
+.font-sans-body {
+  font-family: var(--font-sans);
+}
+
+/* Keyframes & Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* `backwards` (bukan `forwards`): setelah selesai animasi dilepas, jadi wrapper halaman tidak menjadi
+   stacking context permanen yang mengurung modal (z-50) di bawah header sticky. */
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Topographic Texture Helper */
+.bg-topography {
+  background-image: url("/images/topography.svg");
+  background-repeat: repeat;
+  background-size: 500px 500px;
+}
+
+/* Smooth Scrolling & Custom Selection */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Ornamen dekoratif (glow, blob) tidak boleh memicu scroll horizontal di HP. `clip` tidak merusak position: sticky. */
+body {
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+::selection {
+  background-color: #B9382B;
+  color: #FFFFFF;
+}
+
+/* Scrollbar Tweaks */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
