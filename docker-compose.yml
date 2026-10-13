@@ -1,5 +1,6 @@
-# RegarStore - satu perintah untuk semua: docker compose up -d --build
-# Database: Postgres lokal (COMPOSE_PROFILES=local-db) atau Supabase (isi DB_* di .env).
+# RegarStore - konfigurasi PRODUKSI (branch deploy) untuk Dokploy.
+# Tanpa port host: hanya frontend yang dibuka lewat Traefik (tab Domains di Dokploy).
+# Untuk lokal/pengujian gunakan branch main.
 
 x-backend: &backend
   restart: unless-stopped
@@ -21,12 +22,12 @@ x-backend: &backend
     RABBITMQ_HOST: rabbitmq
     RABBITMQ_USER: ${RABBITMQ_USER:-guest}
     RABBITMQ_PASS: ${RABBITMQ_PASSWORD:-guest}
-    MAIL_HOST: ${MAIL_HOST:-mailpit}
-    MAIL_PORT: ${MAIL_PORT:-1025}
+    MAIL_HOST: ${MAIL_HOST:?isi SMTP (MAIL_HOST) - registrasi butuh OTP email}
+    MAIL_PORT: ${MAIL_PORT:-587}
     MAIL_USER: ${MAIL_USER:-}
     MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-    MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
-    MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+    MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+    MAIL_STARTTLS: ${MAIL_STARTTLS:-true}
     MAIL_FROM: ${MAIL_FROM:-noreply@regarstore.com}
     JWT_SECRET: ${JWT_SECRET:?isi JWT_SECRET di .env}
     STORAGE_PROVIDER: ${STORAGE_PROVIDER:-cloudinary}
@@ -38,9 +39,9 @@ x-backend: &backend
     MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
     MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID:-}
     MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
-    FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-    ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-    ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    FRONTEND_URL: ${FRONTEND_URL:?isi URL publik, contoh https://regarstore.com}
+    ADMIN_EMAIL: ${ADMIN_EMAIL:?isi ADMIN_EMAIL}
+    ADMIN_PASSWORD: ${ADMIN_PASSWORD:?isi ADMIN_PASSWORD}
     ADMIN_NAME: ${ADMIN_NAME:-Admin RegarStore}
     GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
 
@@ -66,8 +67,6 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -79,9 +78,6 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     restart: unless-stopped
-    ports:
-      - "5672:5672"     # AMQP protocol
-      - "15672:15672"   # Management Dashboard Web UI
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
@@ -93,20 +89,9 @@ services:
       timeout: 5s
       retries: 5
 
-  mailpit:
-    image: axllent/mailpit:latest
-    restart: unless-stopped
-    ports:
-      - "1025:1025"     # SMTP server for Spring Boot JavaMailSender
-      - "8025:8025"     # Web UI to preview outgoing transactional emails
-    volumes:
-      - mailpit_data:/data
-
   prometheus:
     image: prom/prometheus:latest
     restart: unless-stopped
-    ports:
-      - "9090:9090"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -114,11 +99,9 @@ services:
   grafana:
     image: grafana/grafana:latest
     restart: unless-stopped
-    ports:
-      - "3001:3000"     # 3000 dipakai dashboard Dokploy
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?isi GRAFANA_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning
@@ -203,8 +186,6 @@ services:
       ORDER_SERVICE_HOST: order-service
       PAYMENT_SERVICE_HOST: payment-service
       SPRING_DATA_REDIS_HOST: redis
-    ports:
-      - "8080:8080"
 
   # --- Frontend (nginx, proxy /api ke api-gateway) ---
   frontend:
@@ -215,14 +196,11 @@ services:
         VITE_MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
         VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
-    ports:
-      - "5173:80"
 
 volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
-  mailpit_data:
   prometheus_data:
   grafana_data:
   uploads:
